@@ -109,86 +109,153 @@ As for `phone` and `uber_black_user`, the plots below show that most Uber rider 
 ![city.png](images/city.png) ![phone.png](images/phone.png)![black.png](images/black.png)
 
 ### Algorithms and Techniques
-In this section, you will need to discuss the algorithms and techniques you intend to use for solving the problem. You should justify the use of each one based on the characteristics of the problem and the problem domain. Questions to ask yourself when writing this section:
-- _Are the algorithms you will use, including any default variables/parameters in the project clearly defined?_
-- _Are the techniques to be used thoroughly discussed and justified?_
-- _Is it made clear how the input data or datasets will be handled by the algorithms and techniques chosen?_
+My dataset still has over 40,000 samples for training and validation. After data cleaning, my dataset still suffers two correlated features and high skewed data distributions. 
+
+Apparently, there is not single best algorithm that applied to all kinds of problems. This a binary classification problem with high dimension in including both numerical variables and categorical variables. Assuming the features are roughly linear and the problem is linearly separable, I will train a Logistic Regression model as a benchmark, than try some common machine learning algorithms like k-Nearest Neighbors (KNN), Support Vector Machine (SVM) and Random Forest to choose one for further optimization. The characteristics for this problem are as following:
+
+**Logistic Regression:**
+
+- Pros: Robust to noise, results are interpretable
+- Cons: Not good at dealing with categorical variables,
+
+**k-Nearest Neighbors (KNN)**
+
+- Pros: Non-parametric classifier, can deal with correlated variables
+- Cons: Average predictive accuracy might be lower
+
+**Support Vector Machine (SVM)** 
+
+- Pros: Don’t suffer multicollinearity
+- Cons: Hard to interpret results, might be too slow to apply in a industry scale for Uber
+
+**Random Forest**
+
+- Pros: Performs well on classification problems
+- Cons: May overfit for noise
 
 ### Benchmark
-In this section, you will need to provide a clearly defined benchmark result or threshold for comparing across performances obtained by your solution. The reasoning behind the benchmark (in the case where it is not an established result) should be discussed. Questions to ask yourself when writing this section:
-- _Has some result or value been provided that acts as a benchmark for measuring performance?_
-- _Is it clear how this result or value was obtained (whether by data or by hypothesis)?_
+As starting step, I checked the null error rate, which implies what percentage of total riders retained. It returns **37.405%**, which means that I could obtain **62.595%** accuracy by always predicting "no".
 
+To get a benchmark, I shuffled and split data into training and testing set. Then I trained a Logistic Regression as a benchmark and evaluated by AUROC score. It returned **65.434%**, which means a Logistic Regression model can predict correctly **65.434%** users on if he/she will be retained. So it’s doing a litter bit better than random guess, but not  very much. 
 
 ## III. Methodology
-_(approx. 3-5 pages)_
-
 ### Data Preprocessing
-In this section, all of your preprocessing steps will need to be clearly documented, if any were necessary. From the previous section, any of the abnormalities or characteristics that you identified about the dataset will be addressed and corrected here. Questions to ask yourself when writing this section:
-- _If the algorithms chosen require preprocessing steps like feature selection or feature transformations, have they been properly documented?_
-- _Based on the **Data Exploration** section, if there were abnormalities or characteristics that needed to be addressed, have they been properly corrected?_
-- _If no preprocessing is needed, has it been made clear why?_
+In exploratory analysis phase, I’ve already completed most parts of data cleaning. I dealt with missing values and removed a part of outliers for more than one features. However, to implement machine learning algorithms in `sklearn`, I have to transform the predicting variables to acceptable data types. As most algorithms in `sklearn` don’t accept `object` datatype, I will transform `city`, `phone`,  `signup_date` to `integer` or `float` datatype. The `preprocessing` module in `sklearn` provides a easy way to do this. 
+```basic
+>>> df.dtypes							
+avg_dist                  float64
+avg_rating_by_driver      float64
+avg_rating_of_driver      float64
+avg_surge                 float64
+city                       object
+phone                      object
+signup_date                object
+surge_pct                 float64
+trips_in_first_30_days      int64
+uber_black_user              bool
+weekday_pct               float64
+active                       bool
+dtype: object
+```
+After encoded the `object` features, the dataframe looks like:
+![df](images/df2.png)
+
+In case of overfitting, I shuffled and split data into training set (70%) and testing set (30%). In the following, I will train algorithms on the training set and validate on the testing set by defined performance metric - AUROC score. 
+
 
 ### Implementation
-In this section, the process for which metrics, algorithms, and techniques that you implemented for the given data will need to be clearly documented. It should be abundantly clear how the implementation was carried out, and discussion should be made regarding any complications that occurred during this process. Questions to ask yourself when writing this section:
-- _Is it made clear how the algorithms and techniques were implemented with the given datasets or input data?_
-- _Were there any complications with the original metrics or techniques that required changing prior to acquiring a solution?_
-- _Was there any part of the coding process (e.g., writing complicated functions) that should be documented?_
+To get optimal performance, I tried k-Nearest Neighbors (KNN), Support Vector Machine (SVM) and Random Forest algorithms on training set and validated on testing set scored by the defined metric above - AUROC score. The parameters of these three algorithm are set to default and a common random state. First I imported three classifers from respective module in `sklearn`, trained them on the training set and predicted the `active` value on both training set and testing set. 
+
+It returns the following respective performances:
+
+| Algorithm                    | AUROC (Training) | AUROC (Testing) |
+| ---------------------------- | ---------------- | --------------- |
+| k-Nearest Neighbors (KNN)    | 0.78022775816    | 0.697244988208  |
+| Support Vector Machine (SVM) | 0.792745886852   | 0.712026938469  |
+| Random Forest                | 0.978383669576   | 0.721167695621  |
+
+From the results above, I can recognize that the `RandomForestClassifier` performs best while it also suffers overfitting. It elevates my model accuracy from the **0.65434** to **0.72117** AUROC on testing set. I’ll choose Random Forest for further optimization.
 
 ### Refinement
-In this section, you will need to discuss the process of improvement you made upon the algorithms and techniques you used in your implementation. For example, adjusting parameters for certain models to acquire improved solutions would fall under the refinement category. Your initial and final solutions should be reported, as well as any significant intermediate results as necessary. Questions to ask yourself when writing this section:
-- _Has an initial solution been found and clearly reported?_
-- _Is the process of improvement clearly documented, such as what techniques were used?_
-- _Are intermediate and final solutions clearly reported as the process is improved?_
 
+
+My initial idea was to tune the `max_features`, `max_depth`, `n_estimators`,  of Random Forest using `grid_search` method. However, it drained out of my Laptop memory. So I decided to keep the `n_estimators` as default, which is 10. Then I tried `grid_search` for following parameter combinations.
+
+-  `max_features`: This is the maximum number of features randomly involved in an individual tree in a Random Forest classifier. By rule of thumb,  the algorithm will take square root of total number of features. Larger `max_features` might improve the model performance. However, this decreases the diversity of individual tree and increase computing power. In this project, I'll try tune `max_features` from 1 to the number of features, which is 11.
+-  `max_depth`: As Random Forest is a Tree-based algorithm, `max_depth` limits the depth of an individual tree. Increasing `max_depth` will decrease the number of samples in each node. I'll try to tune it from 1 to 10.
+-  `n_estimators`: This is the number of trees in a Random Forest. In practice, the more trees involved in the Random Forest the better performance it gain. However, a larger number of trees may take more computing resource to train. In this case, I won’t optimize it in the `grid_search`, because it will drain out my laptop memory. After got the optimal parameter combination of `max_features` and `max_depth`, I will arbitrarily increase the `n_estimators` from 10 to 100 expecting to get a performance improvement.
+
+```python
+parameters =	{
+				'max_features': [1,2,3,4,5,6,7,8,9,10,11],
+				'max_depth': [1,2,3,4,5,6,7,8,9,10]
+#    			'n_estimators': [10,20,30,40,50,60,70,80,90,100] # Too slow to implement
+				}
+```
+
+In case of overfitting, I set cross validation parameter of the `grid_search` object to 10-fold with 30% sub-testing set and 70% sub-training set. This asks the the `grid_search` object to evaluate each iteration on 30% of the training set. However, I eventually would care about the performance on the testing set.
+
+When the `n_estimators` was set to default, the `grid_search` returned optimal parameters `(‘max_features’=10, 'max_depth’=8)` with 0.7564 AUROC score on testing set and 0.7693 AUROC score on training set. The `grid_search` increased my model performance - AUROC score - from 0.72117 to 0.7564 on testing set.
+
+After I got the best combination of `max_features` and `max_depth`, I arbitrarily set the parameters of `RandomForestClassifier` with `(max_features=10, max_depth=8, n_estimators=100)`. As expected, it slightly further improved AUROC score to 0.7571 on testing set and 0.7713 on training set.
 
 ## IV. Results
-_(approx. 2-3 pages)_
-
 ### Model Evaluation and Validation
-In this section, the final model and any supporting qualities should be evaluated in detail. It should be clear how the final model was derived and why this model was chosen. In addition, some type of analysis should be used to validate the robustness of this model and its solution, such as manipulating the input data or environment to see how the model’s solution is affected (this is called sensitivity analysis). Questions to ask yourself when writing this section:
-- _Is the final model reasonable and aligning with solution expectations? Are the final parameters of the model appropriate?_
-- _Has the final model been tested with various inputs to evaluate whether the model generalizes well to unseen data?_
-- _Is the model robust enough for the problem? Do small perturbations (changes) in training data or the input space greatly affect the results?_
-- _Can results found from the model be trusted?_
+In this section, I evaluated the optimal Random Forest classifier obtained from `grid_search`, to validate the robustness of this model. I investigated Random Forest classifier with an increasing `max_features` and `max_depth` on the full training set to observe how model complexity affects training and testing performance.
+
+I referred to the codes for Complexity Curves in my Udacity Project 1. I produced two plots for a Random Forest classifier that has been trained and validated on training data using difference parameter settings. The classifier is scored by AUROC score. 
+
+![curve1](images/curve1.png)  ![curve2](images/curve2.png)
+
+The first plot clearly indicates that the classifier suffers from underfitting to overfitting with high variance along the the increase of `max_features`. That may be caused by the decreasing diversity of individual tree. From the plot, it shows the training curve keeps increase as more features randomly enrolled in a tree, while the testing curve decreases after some point. The shaded band refers that the variance on testing set is higher than on training set. 
+
+On the second plot, it shows the training curve keeps increase as the trees go deeper, while the testing curve tends to stable without much improvement as the trees go deeper. That’s a sign for us to prune trees at some shoulder point.
+
+With these new knowledge, I decided to choose my final Random Forest classifier with parameter settings - `(max_features=4, max_depth=9, n_estimators=100)`. It works still very well with 0.7512 AUROC score on testing set and 0.7734 AUROC score on training set. This could trade off the model complexity and performance. This makes the classifier more easy to implement in a industry scale. 
 
 ### Justification
-In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
-- _Are the final results found stronger than the benchmark result reported earlier?_
-- _Have you thoroughly analyzed and discussed the final solution?_
-- _Is the final solution significant enough to have solved the problem?_
+After the optimization above, the Random Forest classifier got 0.7512 AUROC score on testing set. It means this model can predict correctly 75.12% users on if he/she will be retained. It has been improved a lot comparing to a Logistic Regression classifier.
 
+| Actions                    | Algorithm           | AUROC (Training) | AUROC (Testing)     |
+| -------------------------- | ------------------- | ---------------- | ------------------- |
+| Random guess               | Null error          | 0.62514098       | 0.62783094098883574 |
+| Benchmark                  | Logistic Regression | 0.650485459542   | 0.654338556663      |
+| Algorithms Comparison      | Random Forest       | 0.978383669576   | 0.721167695621      |
+| Parameter Tuning           | Random Forest       | 0.7713           | 0.7571              |
+| Trade-off model complexity | Random Forest       | 0.7734           | 0.7512              |
 
 ## V. Conclusion
-_(approx. 1-2 pages)_
-
-### Free-Form Visualization
-In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
-- _Have you visualized a relevant or important quality about the problem, dataset, input data, or results?_
-- _Is the visualization thoroughly analyzed and discussed?_
-- _If a plot is provided, are the axes, title, and datum clearly defined?_
-
 ### Reflection
-In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
-- _Have you thoroughly summarized the entire process you used for this project?_
-- _Were there any interesting aspects of the project?_
-- _Were there any difficult aspects of the project?_
-- _Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?_
+This project built an algorithm to predict a Uber rider is likely to be retained or not. I applied **Logistic Regression** classifier as a starting point and tried **k-Nearest Neighbors (KNN)**, **Support Vector Machine (SVM)** and **Random Forest** classifiers to the training dataset, which was separated from **50,000** samples. I chose **Random Forest* classifier to tune for performance improvement on testing dataset.
+
+
+Then I tuned two key parameters of **Random Forest** classifier with `grid_search` method. To balance model complexity and model performance, I also analyzed complexity curves. To apply this model in an industry scale in the future, I sacrificed an negligible performance. Finally, the final algorithm could 75.12% correctly predict the user will be retained or not on the testing set, which is 30% of original samples.
+
+In this part, I checked the feature importances contributing to the user retention. It shows that “surge_pct”, ”avg_rating_by_driver”, ”avg_surge”, ”city”, ”weekday_pct”, ”phone” would explain more than 78% on user retention. 
+
+| Rank | Indices | Features               | Importances |
+| ---- | ------- | ---------------------- | ----------- |
+| 1    | 7       | surge_pct              | 0.193249    |
+| 2    | 1       | avg_rating_by_driver   | 0.164058    |
+| 3    | 3       | avg_surge              | 0.127574    |
+| 4    | 4       | city                   | 0.116354    |
+| 5    | 10      | weekday_pct            | 0.111231    |
+| 6    | 5       | phone                  | 0.07395     |
+| 7    | 8       | trips_in_first_30_days | 0.061989    |
+| 8    | 0       | avg_dist               | 0.0503      |
+| 9    | 9       | uber_black_user        | 0.048525    |
+| 10   | 2       | avg_rating_of_driver   | 0.026413    |
+| 11   | 6       | signup_date            | 0.026358    |
+![imp](images/imp.png)
+
+- “surge_pct”, ”avg_surge” and ”weekday_pct”: These three features together indicate that the rigid demand of this user, however, it also reflect their tolerance for a surge price.
+- ”avg_rating_by_driver”: This tells us a rider’s response for the ratings by drivers.
+- “city”: As for Uber’s business is highly location based, it not strange to see the retentions vary by cities. 
+- ”phone”: This confirms my initial hypothesis that iPhone APP provides a better user experiences than Android. And this indirectly affects user retention. Uber development team may conduct further investigation. 
+
+
 
 ### Improvement
-In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
-- _Are there further improvements that could be made on the algorithms or techniques you used in this project?_
-- _Were there algorithms or techniques you researched that you did not know how to implement, but would consider using if you knew how?_
-- _If you used your final solution as the new benchmark, do you think an even better solution exists?_
+Firstly, as for feature importances, I didn’t perform the feature selection based on importance. If I could remove some nonsignificant features (eg. “signup_date”) in the modeling phase, the algorithm might be more robust to noise and get a better performance. 
 
------------
-
-**Before submitting, ask yourself. . .**
-
-- Does the project report you’ve written follow a well-organized structure similar to that of the project template?
-- Is each section (particularly **Analysis** and **Methodology**) written in a clear, concise and specific fashion? Are there any ambiguous terms or phrases that need clarification?
-- Would the intended audience of your project be able to understand your analysis, methods, and results?
-- Have you properly proof-read your project report to assure there are minimal grammatical and spelling mistakes?
-- Are all the resources used for this project correctly cited and referenced?
-- Is the code that implements your solution easily readable and properly commented?
-- Does the code execute without error and produce results similar to those reported?
+Additionally, as I mention in the last section, Uber’s business is hight location related. I would highly recommend to perform this analysis for each city. In that way, this project may provide more valuable insights for Uber.
