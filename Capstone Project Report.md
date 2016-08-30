@@ -22,35 +22,47 @@ In this project, I will consider a rider retained if he/she was “active” (i.
 - As for modeling, I will try Decision Tree, Random Forest and Support Vector Machine (SVM) classifiers to see which performs best on my training set. I will choose one algorithm for further reach to tune the respective parameters. 
 - Finally, I will validate my model by cross-validation or on test set. Also, I will check the feature importance in the final model to provide suggestions for Uber.
 
-### Dataset description
-
-* city: city this user signed up in
-* phone: primary device for this user
-* signup_date: date of account registration; in the form ‘YYYY­MM­DD’
-* last_trip_date: the last time this user completed a trip; in the form ‘YYYY­MM­DD’ 
-* avg_dist: the average distance *(in miles) per trip taken in the first 30 days after signup 
-* avg_rating_by_driver: the rider’s average rating over all of their trips 
-* avg_rating_of_driver: the rider’s average rating of their drivers over all of their trips 
-* surge_pct: the percent of trips taken with surge multiplier > 1
-* avg_surge: The average surge multiplier over all of this user’s trips 
-* trips_in_first_30_days: the number of trips this user took in the first 30 days after signing up
-* uber_black_user: TRUE if the user took an Uber Black in their first 30 days; FALSE otherwise
-* weekday_pct: the percent of the user’s trips occurring during a weekday
-
 ### Metrics
 As this is a binary classification problem with 50,000 samples, I will use Area Under the Receiver Operating Characteristic curve (AUROC) to measure performance of a model or result in this project. This score tells me the ability of my model to distinguish the two classes. Intuitively, given a random new user, AUROC is the probability that my model can predict correctly on it will be retained or not.
 
 On the other side, AUROC is independent of the fraction of the test population which is class 0 or class 1. This makes AUROC not sensitive to unbalanced dataset. In this case, the retention rate is very likely something far below 50%, so AUROC will work well to evaluate model performance.
 
-*In concept, ROC curve is plot of the true positive rate from confusion matrix VS the false positive rate as the threshold value for classifying an item as 0 or 1 is increased from 0 to 1: if the classifier is very good, the true positive rate will increase very quickly and the area under the curve will be close to 1. If the classifier is no better than random guessing, the true positive rate will increase linearly with the false positive rate and the area under the curve will be around 0.5, which is the probabilty of random guessing.*
+*In binary classification, the predicted class for each sample is usually made based on a continuous score ***X***. Given a threshold parameter ***T***, the sample is classified as "positive" if ***X > T***, and "negative" otherwise. In concept, ROC curve is plot of the true positive rate from confusion matrix VS the false positive rate as the threshold value ***X*** for classifying an item as 0 or 1 is increased from 0 to 1: if the classifier is very good, the true positive rate will increase very quickly and the area under the curve will be close to 1. If the classifier is no better than random guessing, the true positive rate will increase linearly with the false positive rate and the area under the curve will be around 0.5, which is the probabilty of random guessing.*
+$$
+{\mathit {TPR(True Positive Rate)}}={\frac {\mathit {TP}}{{\mathit {TP}}+{\mathit {FN}}}}
+$$
+
+$$
+{\mathit {FPR(False Positive Rate)}}={\frac {\mathit {FP}}{{\mathit {FP}}+{\mathit {TN}}}}
+$$
+
+Finally, the area under the ROC curve is often computed by the follow formula:
+
+![ROC](https://wikimedia.org/api/rest_v1/media/math/render/svg/a2ad8bf863789f7832e798de5d66c942797eed37)
 
 ![auroc align='center'](http://i.stack.imgur.com/9NpXJ.png)_
 
 ## II. Analysis
 ### Data Exploration
+
 The original dataset is in JSON format. It was into Python and easily parsed into a `dataframe` object. It contains 50,000 rows and 12 columns as described above. Each row represents a user behavior. 
 
 ![df_head](images/df_head.png)
+
+#### Feature Description
+
+- city: city this user signed up in
+- phone: primary device for this user
+- signup_date: date of account registration; in the form ‘YYYY­MM­DD’
+- last_trip_date: the last time this user completed a trip; in the form ‘YYYY­MM­DD’ 
+- avg_dist: the average distance (in miles) per trip taken in the first 30 days after signup 
+- avg_rating_by_driver: the rider’s average rating over all of their trips 
+- avg_rating_of_driver: the rider’s average rating of their drivers over all of their trips 
+- surge_pct: the percent of trips taken with surge multiplier > 1
+- avg_surge: The average surge multiplier over all of this user’s trips 
+- trips_in_first_30_days: the number of trips this user took in the first 30 days after signing up
+- uber_black_user: TRUE if the user took an Uber Black in their first 30 days; FALSE otherwise
+- weekday_pct: the percent of the user’s trips occurring during a weekday
 
 At the first glimpse of the dataset, there are 7 numerical variables, 3 categorical variables and two datetime stamps. 
 
@@ -216,15 +228,23 @@ With these new knowledge, I decided to choose my final Random Forest classifier 
 ### Justification
 After the optimization above, the Random Forest classifier got 0.7512 AUROC score on testing set. It means this model can predict correctly 75.12% users on if he/she will be retained. It has been improved a lot comparing to a Logistic Regression classifier.
 
-| Actions                    | Algorithm           | AUROC (Training) | AUROC (Testing)     |
-| -------------------------- | ------------------- | ---------------- | ------------------- |
-| Random guess               | Null error          | 0.62514098       | 0.62783094098883574 |
-| Benchmark                  | Logistic Regression | 0.650485459542   | 0.654338556663      |
-| Algorithms Comparison      | Random Forest       | 0.978383669576   | 0.721167695621      |
-| Parameter Tuning           | Random Forest       | 0.7713           | 0.7571              |
-| Trade-off model complexity | Random Forest       | 0.7734           | 0.7512              |
+| Pipeline                   | Algorithm           | AUROC (Training) | AUROC (Testing) |
+| -------------------------- | ------------------- | ---------------- | --------------- |
+| Random guess               | Null error          | 0.6251           | 0.6278          |
+| Benchmark                  | Logistic Regression | 0.6505           | 0.6543          |
+| Algorithms Comparison      | Random Forest       | 0.9784           | 0.7212          |
+| Parameter Tuning           | Random Forest       | 0.7713           | 0.7571          |
+| Trade-off model complexity | Random Forest       | 0.7734           | 0.7512          |
+
+On the table above, it shows that I successfully elevated the AUROC score from 0.6278 to 0.7512. Because I was always validating algorithms on the same testing data, it makes sense to me that my final model indeed performs well on predicting Uber rider retention.
+
+However, while working on this project, I may get a better performance if I can conquer the following difficulties:
+- **Unbalanced data:** As for retention is often unbalanced data, I decided not to remove part of data by under sampling. I didn’t get a solution to payoff this phenomenon.
+- **Missing value:** I did thought to impute missing values by kNN strategy, however, I didn’t got a good solution to do this in Python. Considering this should be done before data preprocessing, I just used a more common solution do it. 
+- **Further optimization:** My final model got 0.7512 on AUROC score. However, in a real settings, this is might not an acceptable performance. There might exist some algorithms I haven’t tried but work better than Random Forest.  
 
 ## V. Conclusion
+
 ### Reflection
 This project built an algorithm to predict a Uber rider is likely to be retained or not. I applied **Logistic Regression** classifier as a starting point and tried **k-Nearest Neighbors (KNN)**, **Support Vector Machine (SVM)** and **Random Forest** classifiers to the training dataset, which was separated from **50,000** samples. I chose **Random Forest* classifier to tune for performance improvement on testing dataset.
 
